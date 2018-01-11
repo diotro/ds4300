@@ -13,39 +13,45 @@
   (require rackunit))
 
 
-(define WORDS (sequence->list (in-lines (open-input-file "/usr/share/dict/words"))))
+(define WORDS
+  (filter (λ (x) (< (random) .001))
+  (sequence->list
+   (in-lines
+    (open-input-file "/usr/share/dict/words")))))
 
 
 
-; A Tweet is a (tweet N N DateTime String)
-(struct tweet [id user-id timestamp text] #:transparent)
+; A Tweet is a (tweet N N String)
+(struct tweet [user-id timestamp text] #:transparent)
 
-; add-n-tweets : N Connection String -> Void
+
+; add-n-tweets : N Connection -> Void
 ; Adds n tweets to the given database.
-(define (add-n-tweets n db table)
-  (for (['i (build-list n identity)])
-    (add-tweet-to-db (generate-tweet i) TWEETY "tweets")))
-    
-; add-tweet-to-db : Tweet Connection String -> Void
-; adds the given tweet to the given database
-(define (add-tweet-to-db tweet db table)
-  (define (tweet->sql-string tweet)
-    (format "(~a, ~a, ~a, ~a)"
-            (tweet-id tweet)
-            (tweet-user-id tweet)
-            (tweet-timestamp tweet)
-            (tweet-text tweet)))
-  (query-exec db "INSERT INTO $1 VALUES $2" table (tweet->sql-string tweet)))
+(define (add-n-tweets n db)
+  (for ([i (build-list n identity)])
+    (add-tweet-to-db (generate-tweet i) TWEETY)))
 
-; generate-tweet : N -> Tweet
-; produces a random tweet, including some hashtagged words, with the given id
-(define (generate-tweet tweet-id)
+
+; add-tweet-to-db : Tweet Connection -> Void
+; adds the given tweet to the given database
+(define (add-tweet-to-db tweet db)
+  (query db
+         (bind-prepared-statement
+          (prepare db "INSERT INTO tweets VALUES (DEFAULT, ?,
+                           FROM_UNIXTIME(?), ?)")
+          (list (tweet-user-id tweet)
+                (tweet-timestamp tweet)
+                (tweet-text tweet)))))
+
+
+; generate-tweet : _ -> Tweet
+; produces a random tweet, including some hashtagged words
+(define (generate-tweet _)
   ; -> N
-  ; generates a number in a log distribution
+  ; generates a random user id
   (define (generate-tweet-user-id)
-    (ceiling (log (random 1 22000) 1.001)))
-  (tweet tweet-id
-         (generate-tweet-user-id)
+    (random 1 10000))
+  (tweet (generate-tweet-user-id)
          (current-seconds)
          (generate-tweet-text)))
 
@@ -84,7 +90,19 @@
 ; has-hashtag? : String -> Boolean
 ; does the given string contain a hashtag?
 (define (has-hashtag? text)
-  (regexp-match? #rx"(^|\\s)#\\S" text))
+  (regexp-match? #px"(^#|\\s#)\\S" text))
+
+(module+ test
+  (check-pred has-hashtag? "#hello")
+  (check-pred has-hashtag? "#hello #twohashtags")
+  (check-pred has-hashtag? "hello #whoa")
+  (check-pred has-hashtag? "sweer #asdf")
+  (check-false (has-hashtag? "hello"))
+  (check-false (has-hashtag? "hel#lo"))
+  (check-false (has-hashtag? "hello #"))
+  (check-false (has-hashtag? "hello # "))
+  (check-false (has-hashtag? "# "))
+  )
   
 
 ; -> Number
@@ -102,14 +120,11 @@
 ; returns a random word to use in a tweet
 (define (next-word)
   (define (maybe-add-hashtag word)
-    (if (< (random) .4) (string-append "#" word) word))
+    (if (< (random) .3) (string-append "#" word) word))
   (maybe-add-hashtag (list-ref WORDS (random (length WORDS)))))
 
 (module+ test
-  ; tweets have the right id
-  (check-equal? (tweet-id (generate-tweet 2)) 2)
 
-  
   (define test-tweets (build-list 100 generate-tweet))
 
   (define (check-tweet cur-tweet)
