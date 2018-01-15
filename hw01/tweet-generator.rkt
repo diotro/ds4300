@@ -1,8 +1,12 @@
 #lang racket
 (provide
- ; add-n-tweets : N Connection String -> Void
- ; Adds n tweets to the given database, using the given string as the table to add the tweets to
- add-n-tweets)
+ ; generate-tweet : N  -> Tweet
+ ; generates a tweet for the user with the given id
+ generate-tweet
+ ; N -> Tweet
+ ; generates n tweets, from unique users
+ generate-n-tweets
+ (struct-out tweet))
 
 (require
   db
@@ -14,45 +18,26 @@
 
 
 (define WORDS
-  (filter (λ (x) (< (random) .001))
-  (sequence->list
-   (in-lines
-    (open-input-file "/usr/share/dict/words")))))
+  (filter (λ (x) (< (random) .05))
+          (sequence->list
+           (in-lines
+            (open-input-file "/usr/share/dict/words")))))
 
 
 
 ; A Tweet is a (tweet N N String)
 (struct tweet [user-id timestamp text] #:transparent)
 
+; generate-n-tweets : N -> Tweet
+; generates n tweets, from unique users
+(define (generate-n-tweets n)
+  (build-list n generate-tweet))
 
-; add-n-tweets : N Connection -> Void
-; Adds n tweets to the given database.
-(define (add-n-tweets n db)
-  (for ([i (build-list n identity)])
-    (add-tweet-to-db (generate-tweet i) TWEETY)))
-
-
-; add-tweet-to-db : Tweet Connection -> Void
-; adds the given tweet to the given database
-(define (add-tweet-to-db tweet db)
-  (query db
-         (bind-prepared-statement
-          (prepare db "INSERT INTO tweets VALUES (DEFAULT, ?,
-                           FROM_UNIXTIME(?), ?)")
-          (list (tweet-user-id tweet)
-                (tweet-timestamp tweet)
-                (tweet-text tweet)))))
-
-
-; generate-tweet : _ -> Tweet
-; produces a random tweet, including some hashtagged words
-(define (generate-tweet _)
-  ; -> N
-  ; generates a random user id
-  (define (generate-tweet-user-id)
-    (random 1 10000))
-  (tweet (generate-tweet-user-id)
-         (current-seconds)
+; generate-tweet : N -> Tweet
+; produces a random tweet, including some hashtagged words, from the given user
+(define (generate-tweet user-id)
+  (tweet user-id
+         (random)
          (generate-tweet-text)))
 
 ; generate-tweet-text : -> String
@@ -63,14 +48,14 @@
 ; build-tweet :  -> [Listof String]
 ; adds words at random to a tweet, until it's large enough
 (define (build-tweet)
-  (define (add-words tweet-so-far)
+  (define (build-tweet/acc tweet-so-far)
     (define tweet-plus-one-word (add-word tweet-so-far))
     (if (too-long? tweet-plus-one-word)
         (if (has-hashtag? (collapse-tweet tweet-so-far))
             tweet-so-far
-            (add-words '()))
-        (add-words tweet-plus-one-word)))
-  (add-words '()))
+            (build-tweet/acc '()))
+        (build-tweet/acc tweet-plus-one-word)))
+  (build-tweet/acc '()))
 
 ; collapse-tweet : [List-of String] -> String
 ; collapses a tweet in progress into its text
@@ -128,8 +113,6 @@
   (define test-tweets (build-list 100 generate-tweet))
 
   (define (check-tweet cur-tweet)
-    ; max 10,000 users
-    (check-true (< 0 (tweet-user-id cur-tweet) 10001))
     ; between 1 and 140 chars
     (define chars-in-tweet (string-length (tweet-text cur-tweet)))
     (check-true (<= 1 chars-in-tweet 140))
