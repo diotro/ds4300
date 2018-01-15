@@ -19,7 +19,6 @@
 ;---------------------------------------------------------------------------------------------------
 
 (define (tweet-insertion-results)
-  (clear-all-tweets!)
   (run-benchmarks
    ; how to insert tweets
    '(sequential parallel)
@@ -34,7 +33,7 @@
 
    #:build benchmark-tweets-setup
    #:clean (λ (_1 _2 _3) clear-all-tweets!)  ; remove all tweets
-   #:num-trials 5
+   #:num-trials 3
    #:extract-time 'delta-time
    ))
 
@@ -68,8 +67,6 @@
 
 
 (define (benchmark-timeline-results)
-  (clear-all-tweets!)
-  (clear-all-followers!)
   
   (run-benchmarks
    ; how to retrieve timelines
@@ -79,10 +76,10 @@
      (100 1000)
 
      ; number of followers per user
-     (10 100 1000)
+     (10 100)
 
      ; number of tweets (and users)
-     (1000 10000)
+     (100000 1000000)
      )
 
    ; run the benchmark
@@ -143,8 +140,11 @@
                                 added db-num-follows db-num-tweets)))))))
 
 
+
 (define tweet-results (tweet-insertion-results))
+(define timeline-results (benchmark-timeline-results))
+
+
 (plot-tweet-results tweet-results)
-;(define timeline-results (benchmark-timeline-results))
 (plot-timeline-results timeline-results)
  
