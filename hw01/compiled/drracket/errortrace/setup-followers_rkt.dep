@@ -1,0 +1,1 @@
+("6.11" ("93c83c07c6f3bad918ecbe2ddafd68334dce485e" . "7da2ce8aae2ae8a481fadfe8838e5a89756e09df") #"/Users/julianzucker/Documents/classes/DS4300/hw01/create-database.rkt" #"/Users/julianzucker/Documents/classes/DS4300/hw01/db-interaction.rkt" (collects #"db" #"main.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))

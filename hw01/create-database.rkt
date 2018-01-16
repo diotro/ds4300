@@ -3,7 +3,9 @@
 (provide
  ; Connection
  ; the connection to the tweety database
- TWEETY)
+ TWEETY
+
+ db-setup!)
 
 (define LOCAL-MYSQL-USER "root")
 (define LOCAL-MYSQL-PASS "mysql")
@@ -29,7 +31,7 @@
   (set! DB-CONNECTION-INDEX (remainder (add1 DB-CONNECTION-INDEX) (length DB-CONNECTIONS)))
   conn)
 
-(define (db-reset!)
+(define (db-setup! #:with-indexes with-indexes)
   (query-exec (TWEETY) "DROP TABLE IF EXISTS tweets")
   (query-exec (TWEETY) "CREATE TABLE IF NOT EXISTS tweets (
     tweet_id   BIGINT NOT NULL AUTO_INCREMENT,
@@ -38,12 +40,16 @@
     tweet_text VARCHAR(140),
     CONSTRAINT tweet_id_pk PRIMARY KEY (tweet_id)
 )")
-  (query-exec (TWEETY) "ALTER TABLE tweets ADD INDEX `user_id` (`user_id`)")
 
 
   (query-exec (TWEETY) "DROP TABLE IF EXISTS followers")
   (query-exec (TWEETY) "CREATE TABLE IF NOT EXISTS followers (
     user_id    BIGINT,
     follows_id BIGINT,
-    CONSTRAINT both_id_pk PRIMARY KEY (user_id, follows_id))")
-  )
+    CONSTRAINT both_id_pk PRIMARY KEY (user_id, follows_id)
+  )")
+
+  (when with-indexes
+    (query-exec (TWEETY) "ALTER TABLE tweets    ADD INDEX `user_id`  (`user_id`)")
+    (query-exec (TWEETY) "ALTER TABLE tweets    ADD INDEX `tweet_ts` (`tweet_ts`)")
+    (query-exec (TWEETY) "ALTER TABLE followers ADD INDEX `user_id`  (`user_id`)")))

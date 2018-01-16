@@ -4,7 +4,7 @@
   plot/pict
 
   "tweet-generator.rkt"
-
+  (only-in "create-database.rkt" db-setup!)
   (only-in "setup-tweets.rkt"
            add-tweets!
            clear-all-tweets!)
@@ -18,7 +18,7 @@
 ; TWEET INSERTION RESULTS
 ;---------------------------------------------------------------------------------------------------
 
-(define (tweet-insertion-results)
+(define (tweet-insertion-results with-indexes)
   (run-benchmarks
    ; how to insert tweets
    '(sequential parallel)
@@ -32,8 +32,8 @@
    insert-tweets
 
    #:build benchmark-tweets-setup
-   #:clean (λ (_1 _2 _3) clear-all-tweets!)  ; remove all tweets
-   #:num-trials 3
+   #:clean (λ (_1 _2 _3) (db-setup! #:with-indexes with-indexes))  ; remove all tweets
+   #:num-trials 1
    #:extract-time 'delta-time
    ))
 
@@ -66,7 +66,13 @@
 ;---------------------------------------------------------------------------------------------------
 
 
-(define (benchmark-timeline-results)
+(define (benchmark-timeline-results with-indexes)
+  
+(define (benchmark-followers-setup _1 _2 n-follows n-tweets)
+  (db-setup! #:with-indexes with-indexes)
+  (benchmark-tweets-setup _1 _2 n-tweets)
+  (add-uniform-number-followers! n-follows))
+
   
   (run-benchmarks
    ; how to retrieve timelines
@@ -86,17 +92,10 @@
    timeline-request
 
    #:build benchmark-followers-setup
-   #:clean (λ (_1 _2 _3 _4) clear-all-followers!)  ; remove all tweets
-   #:num-trials 1
+   #:clean (λ (_1 _2 _3 _4) (db-setup! #:with-indexes with-indexes))  ; remove all tweets
+   #:num-trials 3
    #:extract-time 'delta-time
    ))
-
-
-(define (benchmark-followers-setup _1 _2 n-follows n-tweets)
-  (clear-all-followers!)
-  (clear-all-tweets!)
-  (benchmark-tweets-setup _1 _2 n-tweets)
-  (add-uniform-number-followers! n-follows))
 
 
 (define (timeline-request how n _1 _2)
@@ -141,10 +140,14 @@
 
 
 
-(define tweet-results (tweet-insertion-results))
-(define timeline-results (benchmark-timeline-results))
+(define tweet-results/no-index (tweet-insertion-results #f))
+;(define timeline-results/no-index (benchmark-timeline-results #f))
+
+(define tweet-results/index (tweet-insertion-results #t))
+;(define timeline-results/index (benchmark-timeline-results #t))
 
 
-(plot-tweet-results tweet-results)
-(plot-timeline-results timeline-results)
+
+(plot-tweet-results tweet-results/no-index)
+(plot-timeline-results tweet-results/index)
  
