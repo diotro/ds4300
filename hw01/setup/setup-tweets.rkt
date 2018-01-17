@@ -13,6 +13,10 @@
  ; adds the given tweets to the database, from the given number of users,
  ; with a method chosen by the SQLConnectionMethod
  add-tweets!
+
+ add-n-tweets!
+
+ num-tweets
  )
 
 
@@ -21,8 +25,11 @@
 (define (clear-all-tweets!)
   (perform-sql/sequential '("DELETE FROM tweets WHERE 1 = 1")))
 
-
-
+(define (add-n-tweets! n [method 'sequential])
+  (define BATCH-SIZE 10000)
+  (cond [(< n BATCH-SIZE) (add-tweets! (generate-n-tweets n) method)]
+        [else (add-tweets! (generate-n-tweets BATCH-SIZE) method)
+              (add-n-tweets! (- n BATCH-SIZE) method)]))
 
 ; A SQLConnectionMethod is one of:
 ; - 'sequential
@@ -55,3 +62,6 @@
           (tweet-user-id t)
           (tweet-timestamp t)
           (tweet-text t)))
+
+(define (num-tweets)
+  (query-value/tweety "SELECT COUNT(*) FROM tweets"))
