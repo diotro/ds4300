@@ -22,8 +22,9 @@
 
 ; [List-of SQLQuery] -> Void
 (define (perform-sql/parallel queries)
+  (when (cons? queries) ; empty lists break in-slice
     (for/async ([query-set (in-slice (ceiling (/ (length queries) 16)) queries)])
-      (for-each (λ (query) (query-exec (TWEETY) query)) query-set)))
+      (perform-sql/sequential query-set))))
 
 
 (define (query-value/tweety q)

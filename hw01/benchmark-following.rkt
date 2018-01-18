@@ -3,44 +3,40 @@
   benchmark
   plot/pict
 
-db
+  db
   (only-in "setup/create-database.rkt" db-setup! TWEETY)
   (only-in "setup/setup-tweets.rkt" add-n-tweets!)
-  (only-in "setup/setup-followers.rkt" add-number-followers! clear-all-followers!))
+  "setup/setup-followers.rkt")
 
-
-(define NUM-USERS-IN-DB 10000)
 
 
 (define (benchmark-follow-results with-indexes)
-  (define (benchmark-followers-setup _1 n)
+  (define (benchmark-followers-setup _1 n-followers n-users)
     (db-setup! #:with-indexes with-indexes)
-    (add-n-tweets! NUM-USERS-IN-DB)) ; ensure there are users
-
+    (add-n-tweets! n-users))
+  
   (run-benchmarks
    ; how to insert followers
    '(sequential parallel)
 
-   '((1000 2000)) ; number of followers
+   '((1000 2000)
+     (1000 1000000))
 
    insert-followers
 
    #:build benchmark-followers-setup
-   #:clean benchmark-followers-setup
-   #:num-trials 1
-   #:extract-time 'delta-time
+   #:num-trials 15
    ))
 
-; SQLConnectionMethod N _ -> Voidz
-; inserts n tweets into the database with the given method
-(define (insert-followers sql-processing-type n)
-  (add-number-followers! n sql-processing-type))
+(define (insert-followers sql-processing-type n-followers n-users)
+  (define queries (make-queries n-followers))
+  (time ((run-sql sql-processing-type) queries)))
 
 
 (define (plot-follow-results results)
   (parameterize ([plot-x-ticks no-ticks])
     (plot
-     #:title "timeline retrieval speed"
+     #:title "adding followers"
      #:x-label #f
      #:y-label "time (ms)"
      (render-benchmark-alts
@@ -48,8 +44,10 @@ db
       #:normalize? #f
       results
       #:format-opts (lambda (opts)
-                      (let ([added (first opts)])
-                        (format "added ~a followers" added)))))))
+                      (let ([amt-added (first opts)]
+                            [n-users (second opts)])
+                        (format "added ~a followers, db has ~a users"
+                                amt-added n-users)))))))
 
 
 (define follow-results/no-index (benchmark-follow-results #f))

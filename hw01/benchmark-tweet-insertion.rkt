@@ -20,7 +20,7 @@
   (define (reset-db . args)
     (collect-garbage 'major)
     (db-setup! #:with-indexes with-indexes)
-    ;(add-n-tweets! 1000000 'parallel))
+    (add-n-tweets! 1000000 'parallel))
   
   ; SQLConnectionMethod N _ -> Void
   ; inserts n tweets into the database with the given method
@@ -32,16 +32,11 @@
   (reset-db)
   
   (run-benchmarks
-   ; how to insert tweets
    '(sequential parallel)
-
-   '(; number of tweets to add
-     (5000 10000))
-
-   ; run the benchmark
+   '((5000 10000 20000))
    insert-tweets
 
-   #:num-trials 1
+   #:num-trials 30
    #:clean reset-db
    #:extract-time 'delta-time
    ))
