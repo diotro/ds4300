@@ -18,14 +18,14 @@
     (add-n-tweets! n-tweets)
     (add-number-followers!
      (* n-tweets (match n-follows
-                   ['10-followers 10]
-                   ['100-followers 100])))
-    (collect-garbage 'major)
+                   ['1-followers 1]
+                   ['10-followers 10])))
+    (collect-garbage 'major))
   
   (run-benchmarks
-   '(10-followers 100-followers) ; number of followers
+   '(1-followers 10-followers) ; number of followers
    '((100 1000) ; number of tweets to retrieve
-     (100000 1000000)) ; number of tweets in db
+     (10000 100000)) ; number of tweets in db
    timeline-request
    #:build setup
    #:num-trials 30
@@ -34,7 +34,7 @@
 
 
 (define (timeline-request n-follows n-retrieved n-tweets)
-  (build-list 100 (λ (_) (n-recent-tweets n-tweets))))
+  (n-recent-tweets n-tweets))
 
 (define (plot-timeline-results results)
   (parameterize ([plot-x-ticks no-ticks])
