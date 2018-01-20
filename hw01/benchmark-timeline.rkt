@@ -50,7 +50,7 @@
                       (let ([added (first opts)]
                             [db-num-follows (second opts)])
                         (format "retrieved ~a, db had ~a tweets"
-                                (* added 100) db-num-follows)))))))
+                                added db-num-follows)))))))
 
 
 (define timeline-results/index (benchmark-timeline-results #t))
