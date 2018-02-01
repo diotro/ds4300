@@ -93,7 +93,9 @@
 ; returning the new key hash
 (define (do-log-sequential-merge directory)
   ; this part's hard
-  (void))
+  
+  (write-key-hash! directory)
+  (read-key-hash directory))
 
 
 ; The value saying that a value was deleted, JSON has no #<void>
