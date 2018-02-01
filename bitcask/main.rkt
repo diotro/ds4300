@@ -28,16 +28,33 @@
     ; String -> JSON or Void
     ; returns the value related to the key
     (define (get key)
-      (if (hash-has-key? key-map key)
-          (read-value directory (hash-ref key-map key))
+      (if (hash-has-key? key-map (string->symbol key))
+          (read-value directory (hash-ref key-map (string->symbol key)))
           (void)))
 
     ; String JSON -> Void
     ; puts the given value under the given key
     (define (put! key value)
       (define ptr (write-value! directory (crc key value) key value))
-      (hash-set! key-map key ptr))
+      (hash-set! key-map (string->symbol key) ptr)
+      (write-key-hash! directory key-map)
+      (maybe-new-file!))
 
+    (define/private (maybe-new-file!)
+      (define old-write-file (current-write-file directory))
+      (define active-file-size (file-size old-write-file))
+      
+      (when (> active-file-size MAX-FILE-SIZE-BEFORE-CLOSE)
+        (rename-file-or-directory
+         (current-write-file directory)
+         (closed-name-for old-write-file))
+        (with-output-to-file
+            (current-write-file directory)
+          (thunk (void)))))
+
+    (define (closed-name-for file)
+      (string-append (first (string-split file ".")) CLOSED-FILE-EXTENSION))
+    
     ; String -> Void
     ; removes the value corresponding to the given key
     (define (delete! key)
@@ -47,23 +64,29 @@
     ; -> [List-of String]
     ; returns the list of all keys in this bitcask
     (define (list-keys)
-      (hash-keys key-map))
+      (map symbol->string (hash-keys key-map)))
 
     ; fold : [X] [String JSON X] X -> X
     ; folds the given function over the keys in this bitcask, starting from acc0
     (define (fold func acc0)
       (define keys (send this list-keys))
-      (foldr
-       func
-       acc0
-       (send this list-keys)
-       (map (λ (key) (send this get key)) keys)))
+      (foldr func acc0 keys
+             (map (λ (key) (send this get key)) keys)))
 
     ; merge : -> Void
     ; merges all inactive data files
     (define (merge)
-     (void))
+      (define new-map (do-log-sequential-merge directory))
+      (write-key-hash! new-map)
+      (set! key-map new-map))
     ))
+
+; String -> KeyHash
+; performs log sequential merge on the items in the given directory,
+; returning the new key hash
+(define (do-log-sequential-merge directory)
+  ; this part's hard
+  (void))
 
 
 ; The value saying that a value was deleted, JSON has no #<void>
@@ -76,7 +99,7 @@
 (define MAX-FILE-SIZE-BEFORE-CLOSE 500)
 
   
-; A KeyHash is a [HashEq String FilePointer]
+; A KeyHash is a [HashEq Symbol FilePointer]
 
 ; A FilePointer is a (list String N N N)
 ; containing the id of the file, the size of the value,
@@ -92,24 +115,33 @@
 (define (read-key-hash directory)
   (if (file-exists? (key-file-name directory))
       (call-with-input-file (key-file-name directory)
-          (λ (port) (make-hasheq (hash->list (read-json port)))))
+        (λ (port) (make-hasheq (hash->list (read-json port)))))
       (make-hasheq)))
 
 ; write-key-hash! : String KeyHash -> Void
 (define (write-key-hash! directory keys)
   (call-with-output-file (string-append directory "/keys.bitcask")
-    (λ (port) (write-json keys))))
+    #:exists 'replace
+    (λ (port) (write-json keys port))))
 
 ; read-value : String FilePointer -> JSON
 ; from the given directory, read the value the pointer points to
 (define (read-value directory file-pointer)
-  (call-with-input-file (string-append directory "/" (fp-file-id file-pointer))
+  (call-with-input-file (input-file-from-id directory (fp-file-id file-pointer))
     (λ (port)
       (file-position port (fp-value-posn file-pointer))
       (define result (read-string (fp-value-size file-pointer) port))
       (if (and (string? result) (string=? result "#<void>"))
           (void)
           (string->jsexpr result)))))
+
+; input-file-from-id : String -> String
+(define (input-file-from-id dir id)
+  (define file-if-closed (string-append dir "/" id CLOSED-FILE-EXTENSION))
+  (define file-if-open   (string-append dir "/" id ACTIVE-FILE-EXTENSION))
+  (cond
+    [(file-exists? file-if-closed) file-if-closed]
+    [else file-if-open]))
 
 ; write-value! : String String String JSON -> FilePointer
 ; writes the given value in the given directory, returning where it was written
@@ -130,7 +162,7 @@
           (write-json value port))
       (write-string "\n" port)
       (flush-output port)
-      (list (current-write-file-name directory)
+      (list (number->string (highest-num-file (directory-list directory)))
             (value-size value)
             (- (file-size write-file) (value-size value) 1)
             (current-seconds)))))
@@ -141,7 +173,7 @@
 
 (define (value-size value)
   (if (void? value)
-      7
+      7 ; length of "#<void>"
       (string-length (jsexpr->string value))))
 
 ; Stub, to be implemented, but keeps 8 byte width
@@ -155,29 +187,44 @@
   (string-append directory "/" (current-write-file-name directory)))
 
 (define (current-write-file-name dir)
+  (define dir-contents (directory-list dir)) 
   (define file (findf (λ (path) (string-suffix? (path->string path) ACTIVE-FILE-EXTENSION))
-           (directory-list dir)))
+                      dir-contents))
+ 
   (if file
       (path->string file)
-      (string-append "1" ACTIVE-FILE-EXTENSION)))
+      (string-append (number->string
+                      (add1 (highest-num-file dir-contents)))
+                     ACTIVE-FILE-EXTENSION)))
+
+(define (highest-num-file dir-contents)
+  (foldr
+   max
+   0
+   (filter identity
+           (map (λ (path)
+                  (string->number (first (string-split (path->string path) "."))))
+                dir-contents))))
 
 
 (define TEST-DIR "test")
+
+(with-handlers ([exn:fail? (λ (e) (displayln "error deleting TESTDIR"))])
+  (delete-directory/files TEST-DIR))
 (define bc (new bitcask% [directory TEST-DIR]))
+
 
 ; put, get, delete!
 (send bc put! "a" "asdfasdf")
 (send bc get "a")
 (send bc put! "g" (hasheq 'blah 2))
-(send bc delete! "g")
+
 (send bc get "g")
 
 (for ([i (build-list 100 identity)])
-      (send bc put! "a" i))
+  (send bc put! (number->string i) i))
 
 ; Sample fold over all keys, to count the number of elements
 (send bc put! "g" (hasheq 'blah 2))
 (send bc fold (λ (k v acc) (add1 acc)) 0)
 
-; cleanup
-(delete-directory/files TEST-DIR)
