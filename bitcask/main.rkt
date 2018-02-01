@@ -1,5 +1,12 @@
 #lang racket
 
+
+; Things that are still hacky:
+; - Keys are consumed as strings but must be symbols for json-lib
+; - Merging data files neccesary
+; - missing test coverage
+; - this is all one file
+
 (provide bitcask%)
 
 (require json)
@@ -91,10 +98,13 @@
 
 ; The value saying that a value was deleted, JSON has no #<void>
 (define TOMBSTONE (void))
+
 ; the file extension for the write-file
 (define ACTIVE-FILE-EXTENSION ".bcactive")
+
 ; the file extension for all closed files
 (define CLOSED-FILE-EXTENSION ".bcclosed")
+
 ; the size cap for files before closed
 (define MAX-FILE-SIZE-BEFORE-CLOSE 500)
 
