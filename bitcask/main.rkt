@@ -2,11 +2,7 @@
 
 (provide bitcask%)
 
-
-
 (require json)
-
-
 
 (define bitcask%
   (class
@@ -18,45 +14,75 @@
       put!
       delete!
       list-keys
-      fold)
-
+      fold
+      merge)
 
     
     (init-field directory)
+    (when (not (directory-exists? directory))
+      (make-directory directory)
+      (with-output-to-file (current-write-file directory)
+        (thunk (void))))
     (field [key-map (read-key-hash directory)])
-    
+
+    ; String -> JSON or Void
+    ; returns the value related to the key
     (define (get key)
       (if (hash-has-key? key-map key)
           (read-value directory (hash-ref key-map key))
           (void)))
 
+    ; String JSON -> Void
+    ; puts the given value under the given key
     (define (put! key value)
       (define ptr (write-value! directory (crc key value) key value))
-      (set! key-map (hash-set key-map key ptr)))
+      (hash-set! key-map key ptr))
 
+    ; String -> Void
+    ; removes the value corresponding to the given key
     (define (delete! key)
-      (put! key TOMBSTONE))
+      (put! key TOMBSTONE)
+      (hash-remove! key-map key))
 
+    ; -> [List-of String]
+    ; returns the list of all keys in this bitcask
     (define (list-keys)
       (hash-keys key-map))
 
-    (define (fold func acc)
+    ; fold : [X] [String JSON X] X -> X
+    ; folds the given function over the keys in this bitcask, starting from acc0
+    (define (fold func acc0)
       (define keys (send this list-keys))
       (foldr
        func
-       acc
+       acc0
        (send this list-keys)
        (map (λ (key) (send this get key)) keys)))
+
+    ; merge : -> Void
+    ; merges all inactive data files
+    (define (merge)
+     (void))
     ))
 
+
+; The value saying that a value was deleted, JSON has no #<void>
 (define TOMBSTONE (void))
+; the file extension for the write-file
+(define ACTIVE-FILE-EXTENSION ".bcactive")
+; the file extension for all closed files
+(define CLOSED-FILE-EXTENSION ".bcclosed")
+; the size cap for files before closed
+(define MAX-FILE-SIZE-BEFORE-CLOSE 500)
+
   
 ; A KeyHash is a [HashEq String FilePointer]
 
 ; A FilePointer is a (list String N N N)
 ; containing the id of the file, the size of the value,
 ; the position of the value, and the timestamp of the last write
-; convenience accessors:
+
+; convenience accessors for a FilePointer:
 (define fp-file-id    first)
 (define fp-value-size second)
 (define fp-value-posn third)
@@ -65,9 +91,9 @@
 ; read-key-hash : String -> KeyHash
 (define (read-key-hash directory)
   (if (file-exists? (key-file-name directory))
-      (call-with-input-file 
-          (λ (port) (read-json port)))
-      (hasheq)))
+      (call-with-input-file (key-file-name directory)
+          (λ (port) (make-hasheq (hash->list (read-json port)))))
+      (make-hasheq)))
 
 ; write-key-hash! : String KeyHash -> Void
 (define (write-key-hash! directory keys)
@@ -129,11 +155,15 @@
   (string-append directory "/" (current-write-file-name directory)))
 
 (define (current-write-file-name dir)
-  "file1")
+  (define file (findf (λ (path) (string-suffix? (path->string path) ACTIVE-FILE-EXTENSION))
+           (directory-list dir)))
+  (if file
+      (path->string file)
+      (string-append "1" ACTIVE-FILE-EXTENSION)))
 
 
-
-(define bc (new bitcask% [directory "test"]))
+(define TEST-DIR "test")
+(define bc (new bitcask% [directory TEST-DIR]))
 
 ; put, get, delete!
 (send bc put! "a" "asdfasdf")
@@ -142,6 +172,12 @@
 (send bc delete! "g")
 (send bc get "g")
 
+(for ([i (build-list 100 identity)])
+      (send bc put! "a" i))
+
 ; Sample fold over all keys, to count the number of elements
 (send bc put! "g" (hasheq 'blah 2))
 (send bc fold (λ (k v acc) (add1 acc)) 0)
+
+; cleanup
+(delete-directory/files TEST-DIR)
