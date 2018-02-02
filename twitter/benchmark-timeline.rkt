@@ -1,42 +1,39 @@
 #lang racket
+(provide benchmark-timeline-results)
+
+
 (require
   benchmark
-  plot/pict
-
-  "setup/tweet-generator.rkt"
-  (only-in "setup/create-database.rkt" db-setup!)
-  (only-in "setup/setup-tweets.rkt" add-n-tweets!)
-  (only-in "setup/setup-followers.rkt" add-number-followers!)
-  (only-in "setup/user-recent-tweets.rkt" n-recent-tweets))
+  plot/pict)
 
 
 
-(define (benchmark-timeline-results with-indexes)
 
+(define (benchmark-timeline-results db-setup! add-n-tweets! add-number-followers! timeline-func)
   (define (setup n-follows n-retrieved n-tweets)
-    (db-setup! #:with-indexes with-indexes)
+    (db-setup!)
     (add-n-tweets! n-tweets)
     (add-number-followers!
      (* n-tweets (match n-follows
                    ['1-followers 1]
                    ['10-followers 10])))
     (collect-garbage 'major))
+
+  (define (timeline-request n-follows n-retrieved n-tweets)
+  (timeline-func n-tweets))
   
-  (run-benchmarks
+  (plot-results (run-benchmarks
    '(1-followers 10-followers) ; number of followers
    '((100 1000) ; number of tweets to retrieve
      (10000 100000)) ; number of tweets in db
    timeline-request
    #:build setup
-   #:num-trials 30
+   #:num-trials 5
    #:extract-time 'delta-time
-   ))
+   )))
 
 
-(define (timeline-request n-follows n-retrieved n-tweets)
-  (n-recent-tweets n-tweets))
-
-(define (plot-timeline-results results)
+(define (plot-results results)
   (parameterize ([plot-x-ticks no-ticks])
     (plot
      #:title "timeline retrieval speed (100 requests)"
@@ -52,10 +49,3 @@
                         (format "retrieved ~a, db had ~a tweets"
                                 added db-num-follows)))))))
 
-
-(define timeline-results/index (benchmark-timeline-results #t))
-(plot-timeline-results timeline-results/index)
-
-
-(define timeline-results/no-index (benchmark-timeline-results #f))
-(plot-timeline-results timeline-results/no-index)

@@ -10,10 +10,18 @@
 
 
 
-(define (benchmark-follow-results with-indexes)
+(define (benchmark-follow-results with-indexes
+                                  db-setup-func
+                                  tweet-adding-func
+                                  follower-query-producer)
   (define (benchmark-followers-setup _1 n-followers n-users)
-    (db-setup! #:with-indexes with-indexes)
-    (add-n-tweets! n-users))
+    (db-setup-func #:with-indexes with-indexes)
+    (tweet-adding-func n-users))
+
+  
+  (define (insert-followers sql-processing-type n-followers n-users)
+    (define queries (make-queries n-followers))
+    (time ((run-sql sql-processing-type) queries)))
   
   (run-benchmarks
    ; how to insert followers
@@ -28,9 +36,6 @@
    #:num-trials 15
    ))
 
-(define (insert-followers sql-processing-type n-followers n-users)
-  (define queries (make-queries n-followers))
-  (time ((run-sql sql-processing-type) queries)))
 
 
 (define (plot-follow-results results)

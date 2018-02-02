@@ -36,7 +36,7 @@
    '((5000 10000 20000))
    insert-tweets
 
-   #:num-trials 30
+   #:num-trials 10
    #:clean reset-db
    #:extract-time 'delta-time
    ))
