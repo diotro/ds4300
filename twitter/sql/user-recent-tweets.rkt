@@ -11,10 +11,10 @@
   (only-in "create-database.rkt" TWEETY))
 
 
-; n-recent-tweets : N -> [Listof String]
-; Picks a random user, and returns their follower's most recent n tweets
-(define (n-recent-tweets n)
-  (follower-recent-tweets n (pick-user)))
+; n-recent-tweets : N N -> [Listof String]
+; Produces the given user's follower's most recent n tweets
+(define (n-recent-tweets user n)
+  (follower-recent-tweets n user))
 
 
 ; pick-user : -> N

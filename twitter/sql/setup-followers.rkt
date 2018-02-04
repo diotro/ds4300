@@ -4,35 +4,27 @@
  ; sets the number of followers in the database to n
  add-number-followers!
  ; -> Void
- clear-all-followers!
-
- run-sql
- make-queries)
+ clear-all-followers!)
 
 
 
-(require db
-         (only-in "create-database.rkt" TWEETY)
-         (only-in "db-interaction.rkt" perform-sql/sequential perform-sql/parallel))
+(require
+  db
+  (only-in "sql-db.rkt" TWEETY))
 
 
 (define (clear-all-followers!)
-  (perform-sql/parallel '("DELETE FROM followers WHERE 1 = 1")))
+  (query-exec TWEETY '("DELETE FROM followers WHERE 1 = 1")))
 
-(define (add-number-followers! n [sql-processing-type 'sequential])
-  ((run-sql sql-processing-type) (make-queries n)))
+(define (add-number-followers! n)
+  (query-exec TWEETY (make-queries n)))
 
-
-(define (run-sql type)
-  (match type
-    ['sequential perform-sql/sequential]
-    ['parallel perform-sql/parallel]))
 
 ; make-queries :  N -> [List-of SQLQuery]
-; makes queries to add n followers to users in the database
+; makes queries to add n followers to each user in the database
 (define (make-queries num-followers)
   (define user-ids (get-users))
-  (define maybe-followers (choose-followers user-ids num-followers))
+  (define maybe-followers (choose-followers user-ids (* (length user-ids) num-followers)))
   (define in-db (get-followers))
   
   (define to-follow
@@ -63,7 +55,6 @@
     (define new-followers (choose user-ids (ceiling (/ num-followers (length user-ids)))))
     (define (good-ones new-ones)
       (remove user (remove-duplicates new-ones)))
-    ; set the user's followers in the hash to be the good ones of the new followers
     (hash-set followers user (good-ones new-followers))))
 
 

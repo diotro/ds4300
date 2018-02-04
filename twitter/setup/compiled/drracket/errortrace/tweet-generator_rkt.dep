@@ -1,1 +1,0 @@
-("6.11" ("187f8ee371c5aa8c60b152eee0d565dd94ae6478" . "f75ae1e43e0c390fa88b58c10b869d776fa887b2") #"/Users/julianzucker/Documents/classes/DS4300/twitter/setup/create-database.rkt" (collects #"db" #"main.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt") (collects #"rackunit" #"main.rkt"))

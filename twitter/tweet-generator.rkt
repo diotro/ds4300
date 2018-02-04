@@ -8,11 +8,6 @@
  generate-n-tweets
  (struct-out tweet))
 
-(require
-  db
-  (only-in "create-database.rkt" TWEETY))
-
-
 (module+ test
   (require rackunit))
 

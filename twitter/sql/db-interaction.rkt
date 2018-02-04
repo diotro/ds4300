@@ -24,6 +24,7 @@
 (define (perform-sql/parallel queries)
   (when (cons? queries) ; empty lists break in-slice
     (for/async ([query-set (in-slice (ceiling (/ (length queries) 16)) queries)])
+      ; each thread should perform queries sequentially
       (perform-sql/sequential query-set))))
 
 
