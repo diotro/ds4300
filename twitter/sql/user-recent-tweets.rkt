@@ -8,7 +8,7 @@
 
 (require
   db
-  (only-in "create-database.rkt" TWEETY))
+  (only-in "sql-db.rkt" TWEETY))
 
 
 ; n-recent-tweets : N N -> [Listof String]
@@ -20,7 +20,7 @@
 ; pick-user : -> N
 ; returns the ID of a random user
 (define (pick-user)
-  (query-value (TWEETY) "SELECT DISTINCT (user_id)
+  (query-value TWEETY "SELECT DISTINCT (user_id)
                        FROM tweets ORDER BY RAND() LIMIT 1"))
 
 
@@ -28,7 +28,7 @@
 ; returns the most recent n tweets from the given user
 (define (follower-recent-tweets n user)
   (define sql (recent-tweets/list n (user-followers user)))
-  (when sql (query-rows (TWEETY) sql)))
+  (when sql (query-rows TWEETY sql)))
 
 
 
@@ -51,8 +51,7 @@
 ; user-followers : N -> [List-of N]
 ; returns all users that follow the given user
 (define (user-followers user)
-  (define conn (TWEETY))
-  (query-list conn
+  (query-list TWEETY
               (bind-prepared-statement
-               (prepare conn "SELECT follows_id FROM followers WHERE user_id = ?")
+               (prepare TWEETY "SELECT follows_id FROM followers WHERE user_id = ?")
                (list user))))

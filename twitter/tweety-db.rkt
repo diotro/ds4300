@@ -7,15 +7,15 @@
 (define tweety-db<%>
   (interface ()
     ; -> Void
-    ; Builds the database, with a million tweets, with 100 tweets per user
+    ; Builds the database, leaving it empty
     setup-db!
 
     ; [List-of Tweet] -> Void
     ; adds the tweets
     add-tweets
 
-    ; [List-of [Pair N N]] -> Void
-    ; adds each of the given follower pairs
+    ; N -> Void
+    ; adds n followers to each user
     add-followers
 
     ; N N -> Void

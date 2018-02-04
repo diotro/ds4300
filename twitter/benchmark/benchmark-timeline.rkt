@@ -4,33 +4,36 @@
 
 (require
   benchmark
-  plot/pict)
+  plot/pict
+  racket/serialize)
 
 
 
 
-(define (benchmark-timeline-results db-setup! add-n-tweets! add-number-followers! timeline-func)
+(define (benchmark-timeline-results db port)
+  (define tweets (deserialize (read port)))
+
   (define (setup n-follows n-retrieved n-tweets)
-    (db-setup!)
-    (add-n-tweets! n-tweets)
-    (add-number-followers!
-     (* n-tweets (match n-follows
-                   ['1-followers 1]
-                   ['10-followers 10])))
-    (collect-garbage 'major))
+    (send db setup-db!)
+    (send db add-tweets tweets)
+    (send db add-followers (match n-follows
+                             ['1-followers 1]
+                             ['10-followers 10]))
+  (collect-garbage 'major))
 
-  (define (timeline-request n-follows n-retrieved n-tweets)
-  (timeline-func n-tweets))
+(define (timeline-request n-follows n-retrieved n-tweets)
+  (send db timeline-request (random 100) n-tweets))
   
-  (plot-results (run-benchmarks
-   '(1-followers 10-followers) ; number of followers
-   '((100 1000) ; number of tweets to retrieve
-     (10000 100000)) ; number of tweets in db
-   timeline-request
-   #:build setup
-   #:num-trials 5
-   #:extract-time 'delta-time
-   )))
+(plot-results
+ (run-benchmarks
+  '(1-followers 10-followers) ; number of followers
+  '((100 1000) ; number of tweets to retrieve
+    (10000 100000)) ; number of tweets in db
+  timeline-request
+  #:build setup
+  #:num-trials 30
+  #:extract-time 'delta-time
+  )))
 
 
 (define (plot-results results)

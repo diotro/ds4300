@@ -34,7 +34,7 @@
     ; N N -> Void
     ; returns the given number of tweets from followers of the given user
     (define/public (timeline-request user n-tweets)
-      (n-recent-tweets n-tweets))
+      (n-recent-tweets user n-tweets))
     ))
 
 
@@ -60,22 +60,19 @@
     tweet_id   BIGINT NOT NULL AUTO_INCREMENT,
     user_id    BIGINT,
     tweet_ts   DATETIME,
-    tweet_text VARCHAR(140)
+    tweet_text VARCHAR(140),
+    CONSTRAINT tweet_id_pk PRIMARY KEY (`tweet_id`)
     )")
 
 
   (query-exec TWEETY "DROP TABLE IF EXISTS followers")
   (query-exec TWEETY "CREATE TABLE IF NOT EXISTS followers (
     user_id    BIGINT,
-    follows_id BIGINT
+    follows_id BIGINT,
+    CONSTRAINT both_id_pk  PRIMARY KEY (`user_id`, `follows_id`)
     )")
 
   (when with-indexes
-    (query-exec TWEETY "ALTER TABLE tweets    ADD CONSTRAINT
-                            `tweet_id_pk` PRIMARY KEY (`tweet_id`)")
-    (query-exec TWEETY "ALTER TABLE followers ADD CONSTRAINT
-                            `both_id_pk`  PRIMARY KEY (`user_id, follows_id`)")
-    
     (query-exec TWEETY "ALTER TABLE tweets    ADD INDEX      `user_id`  (`user_id`)")
     (query-exec TWEETY "ALTER TABLE tweets    ADD INDEX      `tweet_ts` (`tweet_ts`)")
     (query-exec TWEETY "ALTER TABLE followers ADD INDEX      `user_id`  (`user_id`)")))

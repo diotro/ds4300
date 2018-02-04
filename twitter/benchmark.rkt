@@ -1,7 +1,7 @@
 #lang racket
 
 (require
-
+  racket/serialize
   (only-in "tweet-generator.rkt" generate-n-tweets) 
 
   (only-in "sql/sql-impl.rkt" sql-index% sql-no-index%)
@@ -11,16 +11,18 @@
   (only-in "benchmark/benchmark-following.rkt" benchmark-follow-results)
   pict)
 
-
-; [Instanceof tweety-db<%>] -> Image
-; runs benchmarks against the given database
+;; [Instanceof tweety-db<%>] -> Image
+;; runs benchmarks against the given database
 (define (run-benchmark tweety)
-  (vl-append (benchmark-timeline-results tweety TWEETS)
-             (tweet-insertion-results    tweety TWEETS)
-             (benchmark-follow-results   tweety TWEETS)))
+  (define (run-benchmark-func  benchmark-function)
+    (call-with-input-file "tweets.txt"
+      (λ (port) (benchmark-function tweety port))))
+  
+  (vl-append
+   (run-benchmark-func benchmark-timeline-results)
+   (run-benchmark-func tweet-insertion-results)
+   (run-benchmark-func benchmark-follow-results)))
 
-(define TWEETS (generate-n-tweets 1000000))
 
-
-(apply run-benchmark (new sql-index%))
-(apply run-benchmark (new sql/no-index%))
+(run-benchmark (new sql-index%))
+(run-benchmark (new sql-no-index%))

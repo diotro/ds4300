@@ -17,7 +17,7 @@
   (query-exec TWEETY '("DELETE FROM followers WHERE 1 = 1")))
 
 (define (add-number-followers! n)
-  (query-exec TWEETY (make-queries n)))
+  (for-each (λ (query) (query-exec TWEETY query)) (make-queries n)))
 
 
 ; make-queries :  N -> [List-of SQLQuery]
@@ -86,16 +86,16 @@
 ; -> [List-of N]
 ; returns a list of all users in the database
 (define (get-users)
-  (query-list (TWEETY) "SELECT DISTINCT user_id FROM tweets;"))
+  (query-list TWEETY "SELECT DISTINCT user_id FROM tweets;"))
 
 ; -> [List-of (cons N N)]
 ; returns a list of all followers in the database
 (define (get-followers)
-  (define follower-rows (query-rows (TWEETY) "SELECT * FROM followers;"))
+  (define follower-rows (query-rows TWEETY "SELECT * FROM followers;"))
   (map vector->list follower-rows))
 
 (define (num-users)
-  (query-value (TWEETY) "SELECT COUNT(DISTINCT(user_id)) from tweets"))
+  (query-value TWEETY "SELECT COUNT(DISTINCT(user_id)) from tweets"))
 
 (define (num-followers)
-  (query-value (TWEETY) "SELECT COUNT(*) FROM followers"))
+  (query-value TWEETY "SELECT COUNT(*) FROM followers"))

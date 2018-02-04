@@ -8,8 +8,7 @@
  generate-n-tweets
  (struct-out tweet))
 
-(module+ test
-  (require rackunit))
+(require racket/serialize)
 
 
 (define WORDS
@@ -21,12 +20,17 @@
 
 
 ; A Tweet is a (tweet N N String)
-(struct tweet [user-id timestamp text] #:transparent)
+(serializable-struct tweet [user-id timestamp text] #:transparent)
 
-; generate-n-tweets : N -> Tweet
+; generate-n-tweets : N -> [List-of Tweet]
 ; generates n tweets, from unique users
 (define (generate-n-tweets n)
   (build-list n generate-tweet))
+
+; generate-n-tweets-from-n-users : N N -> [List-of Tweet]
+; generates n tweets, from n unique users
+(define (generate-n-tweets-from-n-users n-tweets n-users)
+  (map generate-tweet (build-list n-tweets (λ (x) (add1 (modulo x n-users))))))
 
 ; generate-tweet : N -> Tweet
 ; produces a random tweet, including some hashtagged words, from the given user
@@ -72,18 +76,6 @@
 (define (has-hashtag? text)
   (regexp-match? #px"(^#|\\s#)\\S" text))
 
-(module+ test
-  (check-pred has-hashtag? "#hello")
-  (check-pred has-hashtag? "#hello #twohashtags")
-  (check-pred has-hashtag? "hello #whoa")
-  (check-pred has-hashtag? "sweer #asdf")
-  (check-false (has-hashtag? "hello"))
-  (check-false (has-hashtag? "hel#lo"))
-  (check-false (has-hashtag? "hello #"))
-  (check-false (has-hashtag? "hello # "))
-  (check-false (has-hashtag? "# "))
-  )
-  
 
 ; -> Number
 ; what length should a generated tweet be?
@@ -92,7 +84,6 @@
      
 
 ; add-word : [List-of String] -> [List-of String]
-; 
 (define (add-word tweet-in-progress)
   (cons (next-word) tweet-in-progress))
 
@@ -102,22 +93,4 @@
   (define (maybe-add-hashtag word)
     (if (< (random) .3) (string-append "#" word) word))
   (maybe-add-hashtag (list-ref WORDS (random (length WORDS)))))
-
-(module+ test
-
-  (define test-tweets (build-list 100 generate-tweet))
-
-  (define (check-tweet cur-tweet)
-    ; between 1 and 140 chars
-    (define chars-in-tweet (string-length (tweet-text cur-tweet)))
-    (check-true (<= 1 chars-in-tweet 140))
-    ; each tweet must have a hashtag
-    (check-pred has-hashtag? (tweet-text cur-tweet)))
-
-  (void (map check-tweet test-tweets))
-
-  ; No duplicates in 100 tweets
-  (define tweet-texts (map tweet-text test-tweets))
-  (check equal? (set-count (list->set tweet-texts)) (length tweet-texts))
-  )
 

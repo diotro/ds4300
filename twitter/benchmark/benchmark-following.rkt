@@ -5,34 +5,35 @@
 
 (require
   benchmark
-  plot/pict)
+  plot/pict
+  "../tweet-generator.rkt"
+  racket/serialize)
 
 
 
-(define (benchmark-follow-results with-indexes
-                                  db-setup-func
-                                  tweet-adding-func
-                                  add-number-followers!)
+(define (benchmark-follow-results db port)
+  (define tweets (deserialize (read port)))
+  
   (define (benchmark-followers-setup _1 n-followers n-users)
-    (db-setup-func #:with-indexes with-indexes)
-    (tweet-adding-func n-users))
+    (send db setup-db!)
+    (send db add-tweets tweets))
 
+  (define (insert-followers _1 n-followers n-users)
+    (time (send db add-followers n-followers)))
   
-  (define (insert-followers sql-processing-type n-followers n-users)
-    (time (add-number-followers! n-followers)))
-  
-  (define results (run-benchmarks
-   ; how to insert followers
-   '(sequential parallel)
+  (define results
+    (run-benchmarks
+     ; how to insert followers
+     '(add)
 
-   '((1000 2000)
-     (1000 1000000))
+     '((10 100)
+       (10000 100000))
 
-   insert-followers
+     insert-followers
 
-   #:build benchmark-followers-setup
-   #:num-trials 15
-   ))
+     #:build benchmark-followers-setup
+     #:num-trials 5
+     ))
 
   (plot-follow-results results))
 

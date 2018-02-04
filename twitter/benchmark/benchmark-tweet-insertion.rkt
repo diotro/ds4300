@@ -4,28 +4,27 @@
 
 (require
   benchmark
-  plot/pict)
+  plot/pict
+  racket/serialize)
 
 
 
-(define (tweet-insertion-results db-setup! add-tweets! add-number-followers! timeline-func tweets)  
+(define (tweet-insertion-results db port)
+  (define tweets (deserialize (read port)))
   ; Any... -> Void
   ; collects garbage, resets the database to the proper state, and adds a million tweets
   (define (reset-db . args)
     (collect-garbage 'major)
-    (db-setup!)
-    (add-tweets! 1000000 'parallel))
+    (send db setup-db!)
+    (send db add-tweets tweets))
   
   ; SQLConnectionMethod N _ -> Void
   ; inserts n tweets into the database with the given method
-  (define (insert-tweets sql-processing-method n)
-    (add-tweets! (take tweets n) sql-processing-method))
-  
-
-  (reset-db)
+  (define (insert-tweets _1 n)
+    (send db add-tweets (take tweets n)))
   
   (define results (run-benchmarks
-   '(sequential parallel)
+   '(add)
    '((5000 10000 20000))
    insert-tweets
 
