@@ -32,11 +32,8 @@
   
   
   (define timeline (run-benchmark-func benchmark-timeline-results))
-  (displayln "timeline")
   (define tweets (run-benchmark-func tweet-insertion-results))
-  (displayln "tweet")
   (define follow (run-benchmark-func benchmark-follow-results))
-  (displayln "follow")
 
   (vl-append
    timeline
@@ -55,7 +52,7 @@
 
 #;(save-benchmark (run-benchmark (new sql-no-index%)) "img/sql-no-index.png")
 
-(save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast")
+(save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast.png")
 
 
 
