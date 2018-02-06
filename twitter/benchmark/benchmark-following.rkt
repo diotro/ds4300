@@ -6,13 +6,13 @@
 (require
   benchmark
   plot/pict
-  "../tweet-generator.rkt"
-  racket/serialize)
+  "../tweet-generator.rkt")
 
 
 
-(define (benchmark-follow-results db port)
-  (define tweets (deserialize (read port)))
+(define (benchmark-follow-results db port reader)
+  
+  (define tweets (port->list reader port))
   
   (define (benchmark-followers-setup _1 n-followers n-users)
     (send db setup-db!)

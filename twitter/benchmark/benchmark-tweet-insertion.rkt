@@ -5,12 +5,13 @@
 (require
   benchmark
   plot/pict
-  racket/serialize)
+  (only-in "../tweet-generator.rkt" tweet))
 
 
 
-(define (tweet-insertion-results db port)
-  (define tweets (deserialize (read port)))
+
+(define (tweet-insertion-results db port reader)
+  (define tweets (port->list reader port))
   ; Any... -> Void
   ; collects garbage, resets the database to the proper state, and adds a million tweets
   (define (reset-db . args)

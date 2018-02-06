@@ -24,7 +24,8 @@
     ; [List-of Tweet] -> Void
     ; adds the tweets
     (define/public (add-tweets tweets)
-      (add-tweets! tweets))
+      (for ([tweet-set (in-slice 10000 tweets)])
+        (add-tweets! tweet-set)))
 
     ; N -> Void
     ; adds n followers to each user

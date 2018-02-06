@@ -5,13 +5,13 @@
 (require
   benchmark
   plot/pict
-  racket/serialize)
+  (only-in "../tweet-generator.rkt" tweet))
 
 
 
 
-(define (benchmark-timeline-results db port)
-  (define tweets (deserialize (read port)))
+(define (benchmark-timeline-results db port reader)
+  (define tweets (port->list reader port))
 
   (define (setup n-follows n-retrieved n-tweets)
     (send db setup-db!)
