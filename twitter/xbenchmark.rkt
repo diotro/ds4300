@@ -4,7 +4,7 @@
   (only-in "tweet-generator.rkt" generate-n-tweets) 
 
   (only-in "sql/sql-impl.rkt" sql-index% sql-no-index%)
-  (only-in "redis/redis-impl.rkt" redis-no-broadcast%)
+  (only-in "redis/redis-impl.rkt" redis-no-broadcast% redis-broadcast%)
   
   ; Individual benchmarks
   (only-in "benchmark/benchmark-timeline.rkt" benchmark-timeline-results)
@@ -48,11 +48,12 @@
   (send bitmap save-file name 'png))
 
 
-#;(save-benchmark (run-benchmark (new sql-index%)) "img/sql-index.png")
+(save-benchmark (run-benchmark (new sql-index%)) "img/sql-index.png")
 
-#;(save-benchmark (run-benchmark (new sql-no-index%)) "img/sql-no-index.png")
+(save-benchmark (run-benchmark (new sql-no-index%)) "img/sql-no-index.png")
 
 (save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast.png")
+(save-benchmark (run-benchmark (new redis-broadcast%)) "img/redis-no-broadcast.png")
 
 
 
