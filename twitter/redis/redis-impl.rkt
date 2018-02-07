@@ -38,26 +38,18 @@
       ; Tweet -> Void
       ; adds the given tweet
       (define (add-tweet tweet)
-        (string-append
-         "SADD "
-         ; key
-         TWEET-PREFIX  (number->string (tweet-user-id tweet))
-
-         " "
-         ; value, "-"-delimited
-         "\\\""
-         (number->string (tweet-user-id tweet))
-         "-"
-         (number->string (tweet-timestamp tweet))
-         "-"
-         (tweet-text tweet)
-         "\\\" "))
-
-      (for/async ([redis-set (in-slice 500 (map (λ (tweet) (add-tweet tweet)) tweets))])
-        (redis-exec redis-set)))
-
+        (SADD
+         (string-append TWEET-PREFIX  (number->string (tweet-user-id tweet)))
+         (string-append
+          (number->string (tweet-user-id tweet))
+          "-"
+          (number->string (tweet-timestamp tweet))
+          "-"
+          (tweet-text tweet))))
+      
+      (void (parameterize ([current-redis-connection (connect)])
+        (do-MULTI (for-each add-tweet tweets)))))
     
-
     ; -> Number
     ; returns the most recent unused id for a tweet
     #;(define (next-tweet-id)
@@ -66,20 +58,22 @@
     ; N -> Void
     ; adds n followers to each user
     (define/public (add-followers n)
+      (define conn (current-redis-connection))
       (define users (SMEMBERS USER-LIST))
       (define user-numbers
         (map (λ (str) (second (string-split (bytes->string/utf-8 str) ":"))) users))
+      
       (define (add-followers user)
         (define (add-followers/acc user n-left)
           (cond [(= n-left 0) ""]
-                [else (string-append
-                       "SADD "
-                       (bytes->string/utf-8 user) " "
-                       (list-ref user-numbers (random (length user-numbers))) " "
-                       "\r\n"
-                       (add-followers/acc user (sub1 n-left)))]))
+                [else (SADD #:rconn conn
+                            (bytes->string/utf-8 user)
+                            (list-ref user-numbers (random (length user-numbers))))
+                      (add-followers/acc user (sub1 n-left))]))
         (add-followers/acc user n))
-      (redis-exec (map add-followers users)))
+
+      (void (parameterize ([current-redis-connection (connect)])
+              (do-MULTI (for-each add-followers users)))))
       
 
     ; N N -> Void
@@ -109,4 +103,8 @@
 (define (to-tweet string)
   (define values (string-split (bytes->string/utf-8 string) "-"))
   (tweet (string->number (first values)) (string->number (second values)) (third values)))
+
+
+
+
 
