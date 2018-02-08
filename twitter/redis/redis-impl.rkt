@@ -15,11 +15,122 @@
 
 
 ;---------------------------------------------------------------------------------------------------
+; ABSTRACT CLASS
+(define abstract-redis%
+  (class* object% (tweety-db<%>)
+    (super-new)
+
+    ; -> Void
+    ; Builds the database, leaving it empty
+    (define/public (setup-db!)
+      (FLUSHDB)
+      ; add 1000 users
+      (for-each (λ (id) (SADD USER-LIST (string-append USER-PREFIX (number->string id))))
+                (build-list 1000 add1)))
+
+    
+    ; N N -> Void
+    ; returns the given number of tweets from followers of a random user
+    (abstract timeline-request)
+
+    ; [List-of Tweet] -> String
+    (abstract add-tweets)
+
+    ; N -> Void
+    ; adds n followers to each user
+    (define/public (add-followers n)
+      (define users (SMEMBERS USER-LIST))
+      (define user-numbers
+        (map (λ (str) (second (string-split (bytes->string/utf-8 str) ":"))) users))
+      
+      (define (add-followers user)
+        (define (add-followers/acc user n-left)
+          (cond [(= n-left 0) ""]
+                [else (SADD
+                       (bytes->string/utf-8 user)
+                       (list-ref user-numbers (random (length user-numbers))))
+                      (add-followers/acc user (sub1 n-left))]))
+        (add-followers/acc user n))
+
+      (MULTI/create-conn (for-each add-followers users)))
+    ))
+
+
+;---------------------------------------------------------------------------------------------------
+; NO-BROADCAST IMPLEMENTATION
+; each user's tweets are stored with them, and dynamically queried
+; whenever you make a timeline request
+(define redis-no-broadcast%
+  (class abstract-redis%
+    (super-new)
+
+    (define/override (add-tweets tweets)
+      ; Tweet -> Void
+      ; adds the given tweet
+      (define (add-tweet tweet)
+        (SADD
+         (string-append TWEET-PREFIX  (number->string (tweet-user-id tweet)))
+         (tweet->redis-tweet-string tweet)))
+      
+      (for ([tweet-set (in-slice 10000 tweets)])
+        (MULTI/create-conn (for-each add-tweet tweet-set))))
+
+    
+    (define/override (timeline-request user amount)
+      (define followers (SMEMBERS (string-append USER-PREFIX (number->string user))))
+      (define tweets (append-map get-tweets followers))
+
+      (take (sort tweets (λ (t1 t2) (< (tweet-timestamp t1) (tweet-timestamp t2))))
+            (min (length tweets) amount)))
+    ))
+
+
+;---------------------------------------------------------------------------------------------------
+; BROADCAST IMPLEMENTATION
+; each user's timeline is created when you insert a 
+
+(define TIMELINE-PREFIX "timeline:")
+
+(define redis-broadcast%
+  (class abstract-redis%
+    (super-new)
+
+    (define/override (add-tweets tweets)
+      (define (add-tweet tweet followers)
+        (add-tweet-to-user tweet)
+        (add-tweet-to-timelines tweet followers))
+
+      (define (add-tweet-to-user tweet)
+        (SADD
+         (string-append TWEET-PREFIX  (number->string (tweet-user-id tweet)))
+         (tweet->redis-tweet-string tweet)))
+
+      (define (add-tweet-to-timelines tweet followers)
+        (define (add-to-timeline user)
+          (ZADD (string-append TIMELINE-PREFIX (bytes->string/utf-8 user))
+                (tweet-timestamp tweet)
+                (tweet->redis-tweet-string tweet)))
+        (for-each add-to-timeline followers))
+
+      (for ([tweet-set (in-slice 10000 tweets)])
+        (define tweeter-followers (map followers (map tweet-user-id tweet-set)))
+        (MULTI/create-conn (for-each add-tweet tweet-set tweeter-followers))))
+
+    
+    (define/override (timeline-request user amount)
+      (define tweets (ZREVRANGE (string-append TIMELINE-PREFIX (number->string user)) 0 amount))
+      (or tweets '()))
+    ))
+
+
+;---------------------------------------------------------------------------------------------------
 ; UTILITY FUNCTIONS
 
 (define-syntax-rule (MULTI/create-conn commands ...)
   (void (parameterize ([current-redis-connection (connect)])
-          (do-MULTI commands ...))))
+          (dynamic-wind (thunk (void))
+                        (thunk (do-MULTI commands ...))
+                        (thunk (disconnect))))))
 
 ; -> Number
 ; returns a random user
@@ -59,110 +170,3 @@
 ; returns the keys for all of the followers of this user
 (define (followers user)
   (SMEMBERS (string-append USER-PREFIX (number->string user))))
-
-;---------------------------------------------------------------------------------------------------
-; ABSTRACT CLASS
-(define abstract-redis%
-  (class* object% (tweety-db<%>)
-    (super-new)
-
-    ; -> Void
-    ; Builds the database, leaving it empty
-    (define/public (setup-db!)
-      (FLUSHDB)
-      ; add 1000 users
-      (for-each (λ (id) (SADD USER-LIST (string-append USER-PREFIX (number->string id))))
-                (build-list 1000 add1)))
-
-    
-    ; N N -> Void
-    ; returns the given number of tweets from followers of a random user
-    (abstract timeline-request)
-
-    ; [List-of Tweet] -> String
-    (abstract add-tweets)
-
-    ; N -> Void
-    ; adds n followers to each user
-    (define/public (add-followers n)
-      (define conn (current-redis-connection))
-      (define users (SMEMBERS USER-LIST))
-      (define user-numbers
-        (map (λ (str) (second (string-split (bytes->string/utf-8 str) ":"))) users))
-      
-      (define (add-followers user)
-        (define (add-followers/acc user n-left)
-          (cond [(= n-left 0) ""]
-                [else (SADD #:rconn conn
-                            (bytes->string/utf-8 user)
-                            (list-ref user-numbers (random (length user-numbers))))
-                      (add-followers/acc user (sub1 n-left))]))
-        (add-followers/acc user n))
-
-      (MULTI/create-conn (for-each add-followers users)))
-    ))
-
-
-;---------------------------------------------------------------------------------------------------
-; NO-BROADCAST IMPLEMENTATION
-; each user's tweets are stored with them, and dynamically queried
-; whenever you make a timeline request
-(define redis-no-broadcast%
-  (class abstract-redis%
-    (super-new)
-
-    (define/override (add-tweets tweets)
-      ; Tweet -> Void
-      ; adds the given tweet
-      (define (add-tweet tweet)
-        (SADD
-         (string-append TWEET-PREFIX  (number->string (tweet-user-id tweet)))
-         (tweet->redis-tweet-string tweet)))
-      
-      (MULTI/create-conn (for-each add-tweet tweets)))
-
-    
-    (define/override (timeline-request user amount)
-      (define followers (SMEMBERS (string-append USER-PREFIX (number->string user))))
-      (define tweets (append-map get-tweets followers))
-
-      (take (sort tweets (λ (t1 t2) (< (tweet-timestamp t1) (tweet-timestamp t2))))
-            (min (length tweets) amount)))
-    ))
-
-
-;---------------------------------------------------------------------------------------------------
-; BROADCAST IMPLEMENTATION
-; each user's timeline is created when you insert a 
-
-(define TIMELINE-PREFIX "timeline:")
-
-(define redis-broadcast%
-  (class abstract-redis%
-    (super-new)
-
-    (define/override (add-tweets tweets)
-      (define (add-tweet tweet followers)
-        (add-tweet-to-user tweet)
-        (add-tweet-to-timelines tweet followers))
-
-      (define (add-tweet-to-user tweet)
-        (SADD
-         (string-append TWEET-PREFIX  (number->string (tweet-user-id tweet)))
-         (tweet->redis-tweet-string tweet)))
-
-      (define (add-tweet-to-timelines tweet followers)
-        (define (add-to-timeline user)
-          (ZADD (string-append TIMELINE-PREFIX (bytes->string/utf-8 user))
-                (tweet-timestamp tweet)
-                (tweet->redis-tweet-string tweet)))
-        (for-each add-to-timeline followers))
-
-      (define tweeter-followers (map followers (map tweet-user-id tweets)))
-      (MULTI/create-conn (for-each add-tweet tweets tweeter-followers)))
-
-    
-    (define/override (timeline-request user amount)
-      (define tweets (ZREVRANGE (string-append TIMELINE-PREFIX (number->string user)) 0 amount))
-      (or tweets '()))
-    ))

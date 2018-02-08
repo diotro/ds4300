@@ -45,16 +45,14 @@
 ;; Run the actual benchmarks
 (define (save-benchmark pict name)
   (define bitmap (pict->bitmap pict))
-  (send bitmap save-file name 'png))
+  (send bitmap save-file (string-append name ".png") 'png))
 
 
-(save-benchmark (run-benchmark (new sql-index%)) "img/sql-index.png")
+;(save-benchmark (run-benchmark (new sql-index%)) "img/sql-index")
+;(save-benchmark (run-benchmark (new sql-no-index%)) "img/sql-no-index")
 
-(save-benchmark (run-benchmark (new sql-no-index%)) "img/sql-no-index.png")
-
-(save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast.png")
-(save-benchmark (run-benchmark (new redis-broadcast%)) "img/redis-no-broadcast.png")
-
+(save-benchmark (run-benchmark (new redis-broadcast%)) "img/redis-no-broadcast")
+(save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast")
 
 
 
