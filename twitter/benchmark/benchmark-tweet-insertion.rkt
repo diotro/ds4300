@@ -12,6 +12,7 @@
 
 (define (tweet-insertion-results db port reader)
   (define tweets (port->list reader port))
+  
   ; Any... -> Void
   ; collects garbage, resets the database to the proper state, and adds a million tweets
   (define (reset-db . args)
