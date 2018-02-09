@@ -14,6 +14,8 @@
 (define TWEET-PREFIX "user-tweets:")
 
 
+(define REDIS-CONN (connect))
+
 ;---------------------------------------------------------------------------------------------------
 ; ABSTRACT CLASS
 (define abstract-redis%
@@ -87,7 +89,7 @@
 
 ;---------------------------------------------------------------------------------------------------
 ; BROADCAST IMPLEMENTATION
-; each user's timeline is created when you insert a 
+; each user's timeline is created when you insert a tweet
 
 (define TIMELINE-PREFIX "timeline:")
 
@@ -112,7 +114,7 @@
                 (tweet->redis-tweet-string tweet)))
         (for-each add-to-timeline followers))
 
-      (for ([tweet-set (in-slice 10000 tweets)])
+      (for ([tweet-set (in-slice 20000 tweets)])
         (define tweeter-followers (map followers (map tweet-user-id tweet-set)))
         (MULTI/create-conn (for-each add-tweet tweet-set tweeter-followers))))
 
@@ -127,10 +129,8 @@
 ; UTILITY FUNCTIONS
 
 (define-syntax-rule (MULTI/create-conn commands ...)
-  (void (parameterize ([current-redis-connection (connect)])
-          (dynamic-wind (thunk (void))
-                        (thunk (do-MULTI commands ...))
-                        (thunk (disconnect))))))
+  (void (parameterize ([current-redis-connection REDIS-CONN])
+          (do-MULTI commands ...))))
 
 ; -> Number
 ; returns a random user
@@ -169,4 +169,5 @@
 ; Integer -> [List-of String]
 ; returns the keys for all of the followers of this user
 (define (followers user)
-  (SMEMBERS (string-append USER-PREFIX (number->string user))))
+  (SMEMBERS (string-append USER-PREFIX (number->string user)) #:rconn REDIS-CONN))
+

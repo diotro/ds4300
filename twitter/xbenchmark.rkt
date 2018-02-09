@@ -30,19 +30,24 @@
     (call-with-input-file "tweets.txt"
       (λ (port) (benchmark-function tweety port port-reader))))
   
-  
-  (define timeline (run-benchmark-func benchmark-timeline-results))
+  (displayln "STARTING NEW BENCHMARK...")
   (define tweets (run-benchmark-func tweet-insertion-results))
-  (define follow (run-benchmark-func benchmark-follow-results))
+  (displayln "TWEET PART DONE...")
+  (define timeline (run-benchmark-func benchmark-timeline-results))
+  (displayln "TIMELINE PART DONE...")
 
-  (vl-append
+  (hc-append
    timeline
-   tweets
-   follow))
+   tweets))
 
 
 ;;---------------------------------------------------------------------------------------------------
 ;; Run the actual benchmarks
+;; open up a terminal and run "redis-server" before running this
+
+
+; Pict% String -> Boolean
+; saves the given benchmark image, under the given filename
 (define (save-benchmark pict name)
   (define bitmap (pict->bitmap pict))
   (send bitmap save-file (string-append name ".png") 'png))
@@ -51,8 +56,9 @@
 ;(save-benchmark (run-benchmark (new sql-index%)) "img/sql-index")
 ;(save-benchmark (run-benchmark (new sql-no-index%)) "img/sql-no-index")
 
-(save-benchmark (run-benchmark (new redis-broadcast%)) "img/redis-no-broadcast")
-(save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast")
+;(save-benchmark (run-benchmark (new redis-no-broadcast%)) "img/redis-no-broadcast")
+(save-benchmark (run-benchmark (new redis-broadcast%)) "img/redis-broadcast")
+
 
 
 
