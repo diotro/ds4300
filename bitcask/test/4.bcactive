@@ -1,3 +1,5 @@
+8 bytes.2 2 81 81
+8 bytes.2 2 82 82
 8 bytes.2 2 83 83
 8 bytes.2 2 84 84
 8 bytes.2 2 85 85
@@ -16,3 +18,7 @@
 8 bytes.2 2 98 98
 8 bytes.2 2 99 99
 8 bytes.1 10 g {"blah":2}
+8 bytes.8 bytes.8 bytes.8 bytes.1 1 8 bytes.1 1 a 3
+8 bytes.1 1 a 3
+8 bytes.1 1 a 3
+8 bytes.1 1 a 3

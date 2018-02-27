@@ -1,4 +1,5 @@
 8 bytes.1 10 a "asdfasdf"
+8 bytes.8 3 a-number 130
 8 bytes.1 10 g {"blah":2}
 8 bytes.1 1 0 0
 8 bytes.1 1 1 1
@@ -25,5 +26,3 @@
 8 bytes.2 2 22 22
 8 bytes.2 2 23 23
 8 bytes.2 2 24 24
-8 bytes.2 2 25 25
-8 bytes.2 2 26 26
