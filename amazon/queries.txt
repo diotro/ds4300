@@ -1,0 +1,71 @@
+# 1. Big table
+SELECT *
+  FROM products
+  WHERE diameter   = "44mm"
+  AND   brand      = "Tommy Hilfiger"
+  AND   dial_color = "Beige";
+
+
+# 2. Category Tables
+SELECT *
+  FROM watches
+  WHERE diameter   = "44mm"
+  AND   brand      = "Tommy Hilfiger"
+  AND   dial_color = "Beige";
+
+
+# 3. Property Table
+SELECT *
+  FROM property
+  WHERE (key = "diameter"   AND value = "44mm")
+    OR  (key = "brand"      AND value = "Tommy Hilfiger")
+    OR  (key = "dial_color" AND value = "Beige");
+
+
+# 4. Zucker Model
+# Requires two steps. First, get the names of the values
+SELECT *
+FROM keys
+WHERE category_name = "Watch";
+
+# Then, in your programming language, find which values you want by looking up
+# the keys corresponding to "diameter", "brand", and "dial_color"
+# Supposing they ended up being "value10", "value17", and "value19":
+SELECT *
+  FROM values
+  WHERE value10 = "44mm"
+  AND   value17 = "Tommy Hilfiger"
+  AND   value19 = "Beige";
+
+# Then, you would have to join the values with the keys to get a meaningful answer.
+
+
+# 5. MongoDB
+db.products.find({"category": "watch",
+                  "diameter": "44mm",
+                  "brand": "Tommy Hilfiger",
+                  "dial_color": "Beige"})
+
+
+Synopsis:
+The first method is the easiest to write queries for. However, each record must have a value for each
+field, which means that the storage for each item scales with the number of categories. Not great, and
+completely infeasible for a large-scale site such as Amazon.
+
+The second model was equally easy to use as the first. However, if I had wanted to query for price or dynamically
+find the category name from a given id, I would have had to join on other tables. The join operation would have
+been pretty expensive, because the price table has to store value on every item.
+
+The third model was easier to use, but will end up being very large. It will become necessary to build an index
+on the key, which will take a lot of time, because the table will have twenty or so rows per item. However, it is
+relatively easy to use. Writing the code for it feels a lot like the MongoDB query. And items are "schemaless" in that
+you can add properties to some items of a given category but not others.
+
+My model was rough. It is impossible to answer any question about any product in one query. You must first perform
+one query to see what the keys are, and then write another query dynamically that asks what the values under each key
+is. I don't know what the server-side performance characteristics would look like, but it would either require a large
+application server or having each client suffer through the round-trip time twice. The data is schemaless in a sense,
+although constrained to either having or not having each of 25 preselected attributes.
+
+The Mongo implementation of this was quite simple. I just had to specify the keys and values I cared about, and
+Mongo took care of the rest. The data are also schemaless.
