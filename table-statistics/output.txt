@@ -1,0 +1,75 @@
+--------------------------------------------------------------------
+previous
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  24	 mode: 0	 percent equal to mode: 0.819509	
+min: 0	max:25	average:0 
+--------------------------------------------------------------------
+pdays
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  292	 mode: -1	 percent equal to mode: 0.819509	
+min: -1	max:871	average:39 
+--------------------------------------------------------------------
+campaign
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  32	 mode: 1	 percent equal to mode: 0.383543	
+min: 1	max:50	average:2 
+--------------------------------------------------------------------
+duration
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  875	 mode: 123	 percent equal to mode: 0.005972	
+min: 4	max:3025	average:263 
+--------------------------------------------------------------------
+day
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  31	 mode: 20	 percent equal to mode: 0.056846	
+min: 1	max:31	average:15 
+--------------------------------------------------------------------
+balance
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  2353	 mode: 0	 percent equal to mode: 0.078965	
+min: -3313	max:71188	average:1422 
+--------------------------------------------------------------------
+age
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  67	 mode: 34	 percent equal to mode: 0.051095	
+min: 19	max:87	average:41 
+--------------------------------------------------------------------
+y
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  2	 mode: no	 percent equal to mode: 0.884760	
+--------------------------------------------------------------------
+poutcome
+not null: 816	 null: 3705	 null%: 0.819509	
+uniques:  4	 mode: 	 percent equal to mode: 0.819509	
+--------------------------------------------------------------------
+month
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  12	 mode: may	 percent equal to mode: 0.309224	
+--------------------------------------------------------------------
+contact
+not null: 3197	 null: 1324	 null%: 0.292856	
+uniques:  3	 mode: cellular	 percent equal to mode: 0.640566	
+--------------------------------------------------------------------
+loan
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  2	 mode: no	 percent equal to mode: 0.847158	
+--------------------------------------------------------------------
+housing
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  2	 mode: yes	 percent equal to mode: 0.566025	
+--------------------------------------------------------------------
+default
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  2	 mode: no	 percent equal to mode: 0.983190	
+--------------------------------------------------------------------
+education
+not null: 4334	 null: 187	 null%: 0.041363	
+uniques:  4	 mode: secondary	 percent equal to mode: 0.510064	
+--------------------------------------------------------------------
+marital
+not null: 4521	 null: 0	 null%: 0.000000	
+uniques:  3	 mode: married	 percent equal to mode: 0.618668	
+--------------------------------------------------------------------
+job
+not null: 4483	 null: 38	 null%: 0.008405	
+uniques:  12	 mode: management	 percent equal to mode: 0.214333	
