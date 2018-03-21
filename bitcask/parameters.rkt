@@ -19,10 +19,6 @@
   (when (not (directory-exists? new-bc))
     (make-directory new-bc))
 
-  (define active-file (string-append new-bc "/" "1" ACTIVE-FILE-EXTENSION))
-  (when (not (file-exists? active-file))
-    (with-output-to-file active-file (thunk (void))))
-
   (define key-file (string-append new-bc "/" KEYDIR-FILE-EXTENSION))
   (when (not (file-exists? key-file))
     (with-output-to-file key-file
@@ -39,4 +35,4 @@
 (define CLOSED-FILE-EXTENSION ".bcclosed")
 (define MERGED-FILE-EXTENSION ".bcmerged")
 (define KEYDIR-FILE-EXTENSION "keydir.bck")
-(define MAX-FILE-SIZE 500)
+(define MAX-FILE-SIZE 50000)

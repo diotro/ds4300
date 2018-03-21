@@ -7,3 +7,6 @@
   (when (directory-exists? dir)
     (delete-directory/files dir))
   (current-bitcask dir))
+
+
+(require rackunit)

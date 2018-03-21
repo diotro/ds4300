@@ -2,11 +2,12 @@
 (provide
  (all-from-out "parameters.rkt")
  keydir?
+ (contract-out [find-keydir (-> keydir?)])
  (contract-out [read-keydir (-> keydir?)])
  (contract-out [write-keydir! (-> keydir? void?)])
  (struct-out bcfp)
  (contract-out [active-bitcask-file (-> port?)])
- (contract-out [active-bitcask-file-name (-> string?)])
+ (contract-out [active-bitcask-file-name (-> string? string?)])
  new-file
  (contract-out [in-bitcask (-> string? string?)])
 
@@ -16,7 +17,7 @@
          "test.rkt"
          json
          racket/serialize
-         racket/struct)
+         racket/hash)
 (module+ test
   (require rackunit))
 
@@ -58,22 +59,28 @@
 ; -> Port
 (define (active-bitcask-file)
   (open-input-file
-   (string-append (current-bitcask) "/" (active-bitcask-file-name))))
+   (active-bitcask-file-name)))
 
 ; -> String
-(define (active-bitcask-file-name)
-  (define highest-num (highest-num-extension ACTIVE-FILE-EXTENSION))
-  (string-append (number->string highest-num) ACTIVE-FILE-EXTENSION))
+(define (active-bitcask-file-name extension)
+  (define highest-num (highest-num-extension extension))
+  (string-append  (current-bitcask)
+                  "/"
+                  (string-append (number->string highest-num) extension)))
 
 
-; Symbol JSExpr (Integer) -> BCFP
+; Symbol JSExpr [#:timestamp Integer] [#:extension String] -> BCFP
 ; writes the given value to the current bitcask, returning its location
-(define (append-data key value [timestamp (current-milliseconds)])
-  (define active-file-name
-    (string-append (current-bitcask) "/" (active-bitcask-file-name)))
+; optionally, uses the given timestamp or file extension instead of
+; the defaults (now and .bcactive, respectively)
+(define (append-data key value
+                     #:timestamp [timestamp (current-milliseconds)]
+                     #:extension [extension ACTIVE-FILE-EXTENSION])
+  (define active-file-name (active-bitcask-file-name extension))
   (define active-file (open-output-file active-file-name #:exists 'append))
   (define offset
-    (string-length (port->string (open-input-file active-file-name))))
+    (call-with-input-file active-file-name
+      (λ (port) (string-length (port->string port)))))
   (define ksize (key-size key))
   (define vsize (value-size value))
 
@@ -87,6 +94,8 @@
         (sub1 (- (+ offset (string-length row)) vsize))
         (current-milliseconds)))
 
+; Int Int Int Symbol JSExpr -> String
+; turns the values into the row to write in the bitcask
 (define (bc-row timestamp key-size value-size key value)
   (string-join 
    `(
@@ -95,15 +104,18 @@
      ,(number->string key-size)
      ,(number->string value-size)
      ,(symbol->string key)
-     ,(jsexpr->string value)
+     ,(value->string value)
      )
    " " #:after-last "\n"))
 
 (define (key-size key)
   (string-length (symbol->string key)))
 
+(define (value->string val)
+  (if (void? val) "" (jsexpr->string val)))
+
 (define (value-size value)
-  (string-length (jsexpr->string value)))
+  (string-length (value->string value)))
 
 ; -> Num
 (define (highest-num-extension extension)
@@ -128,7 +140,47 @@
   (string-append (current-bitcask) "/" path))
 
 
+; find-keydir : -> KeyDir
+; calculates the keydir for the current bitcask by looking at the data
+(define (find-keydir #:extensions [extensions (list ACTIVE-FILE-EXTENSION
+                                                    CLOSED-FILE-EXTENSION)])
+  (define files
+    (filter (λ (str) (ormap (λ (suffix) (string-suffix? str suffix)) extensions))
+            (map (λ (p) (in-bitcask (path->string p)))
+                 (directory-list (current-bitcask)))))
+  (define ports (map open-input-file files))
 
+  (define (find-keydir/file port file-name)
+    (define-values [keydir offset]
+      (for/fold ([keydir (hasheq)]
+                 [offset 0])
+                ([crc (in-port read port)]
+                 [timestamp (in-port read port)]
+                 [key-size (in-port read port)]
+                 [value-size (in-port read port)]
+                 [key (in-port read port)]
+                 [value (in-port read-json port)])
+        (define row (bc-row timestamp key-size value-size key value))
+        (values (hash-set keydir key (bcfp file-name
+                                           value-size
+                                           (sub1 (- (+ offset (string-length row)) value-size))
+                                           timestamp))
+                (+ offset (string-length row)))))
+    keydir)
+
+  
+  (begin0
+    (for/fold ([keydir (hasheq)])
+              ([port ports]
+               [file files])
+      (hash-union keydir
+                  (find-keydir/file port file)
+                  #:combine/key
+                  (λ (key val1 val2)
+                    (argmax bcfp-timestamp (list val1 val2)))))
+    
+    (for-each close-input-port ports)))
+                
   
 
 
